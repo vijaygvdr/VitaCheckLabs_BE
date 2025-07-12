@@ -10,10 +10,11 @@ class Settings(BaseSettings):
     # Database (optional for now)
     DATABASE_URL: str = "sqlite:///./test.db"
     
-    # JWT
+    # JWT Authentication
     SECRET_KEY: str = "development_secret_key_change_in_production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Environment
     ENVIRONMENT: str = "development"
