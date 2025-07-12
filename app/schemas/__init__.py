@@ -26,3 +26,22 @@ from .report import (
     PaymentStatus,
     Priority
 )
+
+from .company import (
+    CompanyInfoResponse,
+    CompanyInfoUpdate,
+    ContactInfoResponse,
+    ServicesListResponse,
+    ContactFormSubmission,
+    ContactFormResponse,
+    ContactMessageResponse,
+    ContactMessageUpdate,
+    ContactMessageListResponse,
+    ContactMessageFilter,
+    ContactStats,
+    CompanyProfileResponse,
+    InquiryType,
+    MessageStatus,
+    BusinessHours,
+    CompanySettings
+)
