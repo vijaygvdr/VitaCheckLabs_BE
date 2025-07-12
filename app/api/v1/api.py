@@ -1,10 +1,13 @@
 from fastapi import APIRouter
-from app.api.v1 import auth
+from app.api.v1 import auth, lab_tests
 
 api_router = APIRouter()
 
 # Include authentication router
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
+
+# Include lab tests router
+api_router.include_router(lab_tests.router, prefix="/lab-tests", tags=["lab-tests"])
 
 # Placeholder endpoints - will be implemented in subsequent tasks
 @api_router.get("/")
@@ -13,6 +16,5 @@ async def api_root():
     return {"message": "VitaCheckLabs API v1"}
 
 # TODO: Add routers for:
-# - lab_tests (VIT-25)
 # - reports (VIT-26)
 # - company (VIT-27)

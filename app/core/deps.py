@@ -137,8 +137,8 @@ def get_lab_technician_user(current_user: User = Depends(get_current_active_user
 
 
 def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
 ) -> Optional[User]:
     """
     Dependency to get current user if token is provided, otherwise None.
