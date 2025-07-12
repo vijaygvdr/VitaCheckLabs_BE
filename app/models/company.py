@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, Enum
 from sqlalchemy.sql import func
 from app.database import Base
+import enum
 
 
 class Company(Base):
@@ -136,3 +137,84 @@ class Company(Base):
             day_name = days[day_of_week]
             return self.operating_hours.get(day_name)
         return None
+
+
+class MessageStatus(enum.Enum):
+    """Contact message status"""
+    NEW = "new"
+    READ = "read"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+
+class ContactMessage(Base):
+    """Contact message model for customer inquiries and feedback"""
+    
+    __tablename__ = "contact_messages"
+    
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Contact information
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(255), nullable=False, index=True)
+    phone = Column(String(20), nullable=True)
+    
+    # Message details
+    subject = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    inquiry_type = Column(String(50), nullable=True)  # general, support, complaint, feedback
+    
+    # Status tracking
+    status = Column(Enum(MessageStatus), default=MessageStatus.NEW, nullable=False, index=True)
+    priority = Column(String(20), default="normal", nullable=False)  # urgent, high, normal, low
+    
+    # Response tracking
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    response_message = Column(Text, nullable=True)
+    responded_by = Column(String(100), nullable=True)  # Admin/staff who responded
+    
+    # Additional metadata
+    source = Column(String(50), default="website", nullable=False)  # website, mobile_app, phone, email
+    user_agent = Column(String(500), nullable=True)  # Browser/device info
+    ip_address = Column(String(45), nullable=True)  # IPv4/IPv6 address
+    
+    # Follow-up
+    follow_up_required = Column(Boolean, default=False, nullable=False)
+    follow_up_date = Column(DateTime(timezone=True), nullable=True)
+    internal_notes = Column(Text, nullable=True)
+    
+    # Audit fields
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    def __repr__(self):
+        return f"<ContactMessage(id={self.id}, email='{self.email}', subject='{self.subject[:30]}...', status='{self.status.value}')>"
+    
+    @property
+    def is_urgent(self):
+        """Check if message is urgent"""
+        return self.priority in ["urgent", "high"]
+    
+    @property
+    def response_time_hours(self):
+        """Calculate response time in hours"""
+        if self.responded_at and self.created_at:
+            delta = self.responded_at - self.created_at
+            return delta.total_seconds() / 3600
+        return None
+    
+    def mark_as_read(self):
+        """Mark message as read"""
+        if self.status == MessageStatus.NEW:
+            self.status = MessageStatus.READ
+    
+    def mark_as_resolved(self, response_message=None, responded_by=None):
+        """Mark message as resolved with optional response"""
+        self.status = MessageStatus.RESOLVED
+        self.responded_at = func.now()
+        if response_message:
+            self.response_message = response_message
+        if responded_by:
+            self.responded_by = responded_by
