@@ -13,3 +13,7 @@ httpx==0.25.2
 python-dotenv==1.0.0
 psycopg2-binary==2.9.7
 boto3==1.29.7
+
+# Added for VIT-28: Input validation and error handling
+email-validator==2.1.0.post1
+bleach==6.1.0
