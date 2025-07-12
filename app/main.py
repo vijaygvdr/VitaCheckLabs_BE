@@ -32,20 +32,26 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    from app.database import check_database_health
-    from app.services.s3_service import s3_service
-    
-    # Check database health
-    db_health = await check_database_health()
-    
-    # Check S3 health
-    s3_health = await s3_service.check_bucket_exists()
-    
-    return {
-        "status": "healthy" if db_health["status"] == "healthy" and s3_health else "unhealthy",
-        "database": db_health,
-        "s3": {"status": "healthy" if s3_health else "unhealthy"}
-    }
+    try:
+        from app.database import check_database_health
+        from app.services.s3_service import s3_service
+        
+        # Check database health
+        db_health = await check_database_health()
+        
+        # Check S3 health
+        s3_health = await s3_service.check_bucket_exists()
+        
+        return {
+            "status": "healthy" if db_health["status"] == "healthy" and s3_health else "unhealthy",
+            "database": db_health,
+            "s3": {"status": "healthy" if s3_health else "unhealthy"}
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     import uvicorn
