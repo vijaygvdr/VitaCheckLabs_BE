@@ -11,7 +11,7 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 httpx==0.25.2
 python-dotenv==1.0.0
-psycopg2-binary==2.9.7
+# psycopg2-binary==2.9.7  # Commented out for SQLite development
 boto3==1.29.7
 
 # Added for VIT-28: Input validation and error handling

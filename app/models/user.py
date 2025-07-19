@@ -41,6 +41,7 @@ class User(Base):
     
     # Relationships
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan")
     
     # Indexes for performance
     __table_args__ = (

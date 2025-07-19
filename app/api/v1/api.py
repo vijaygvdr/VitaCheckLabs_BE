@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, lab_tests, reports, company
+from app.api.v1 import auth, lab_tests, reports, company, bookings
 
 api_router = APIRouter()
 
@@ -14,6 +14,10 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 
 # Include company router
 api_router.include_router(company.router, prefix="/company", tags=["company"])
+
+# Include bookings router
+api_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
+
 
 # Placeholder endpoints - will be implemented in subsequent tasks
 @api_router.get("/")

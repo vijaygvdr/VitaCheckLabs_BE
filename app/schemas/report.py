@@ -31,6 +31,7 @@ class Priority(str, Enum):
 
 class ReportCreate(BaseModel):
     """Schema for creating a new report"""
+    user_id: int = Field(..., description="User ID for whom the report is created")
     lab_test_id: int = Field(..., description="Lab test ID")
     scheduled_at: Optional[datetime] = Field(None, description="Scheduled test date")
     collection_location: Optional[str] = Field(None, max_length=200, description="Collection location")
@@ -40,8 +41,11 @@ class ReportCreate(BaseModel):
 
     @validator('scheduled_at')
     def validate_scheduled_at(cls, v):
-        if v and v <= datetime.now():
-            raise ValueError('Scheduled date must be in the future')
+        if v:
+            from datetime import timezone
+            now = datetime.now(timezone.utc) if v.tzinfo else datetime.now()
+            if v <= now:
+                raise ValueError('Scheduled date must be in the future')
         return v
 
 

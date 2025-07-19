@@ -15,6 +15,7 @@ class S3Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "ignore"  # Ignore extra fields from .env
 
 @lru_cache()
 def get_s3_settings():
@@ -32,7 +33,7 @@ class S3Service:
         self.bucket_name = self.settings.s3_bucket_name
         self.reports_prefix = self.settings.s3_reports_prefix
 
-    async def upload_file(self, file_content: bytes, file_name: str, content_type: str = "application/octet-stream") -> Optional[str]:
+    def upload_file(self, file_content: bytes, file_name: str, content_type: str = "application/octet-stream") -> Optional[str]:
         """
         Upload a file to S3 and return the object key
         """
@@ -55,7 +56,7 @@ class S3Service:
             print(f"Error uploading file to S3: {e}")
             return None
 
-    async def download_file(self, object_key: str) -> Optional[bytes]:
+    def download_file(self, object_key: str) -> Optional[bytes]:
         """
         Download a file from S3
         """
@@ -66,7 +67,7 @@ class S3Service:
             print(f"Error downloading file from S3: {e}")
             return None
 
-    async def delete_file(self, object_key: str) -> bool:
+    def delete_file(self, object_key: str) -> bool:
         """
         Delete a file from S3
         """
@@ -77,7 +78,7 @@ class S3Service:
             print(f"Error deleting file from S3: {e}")
             return False
 
-    async def generate_presigned_url(self, object_key: str, expiration: int = 3600) -> Optional[str]:
+    def generate_presigned_url(self, object_key: str, expiration: int = 3600) -> Optional[str]:
         """
         Generate a presigned URL for file download
         """
@@ -92,7 +93,7 @@ class S3Service:
             print(f"Error generating presigned URL: {e}")
             return None
 
-    async def check_bucket_exists(self) -> bool:
+    def check_bucket_exists(self) -> bool:
         """
         Check if the S3 bucket exists and is accessible
         """

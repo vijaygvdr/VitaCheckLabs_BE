@@ -94,7 +94,8 @@ class Report(Base):
     )
     
     def __repr__(self):
-        return f"<Report(id={self.id}, report_number='{self.report_number}', user_id={self.user_id}, status='{self.status.value}')>"
+        status_value = self.status.value if self.status else 'None'
+        return f"<Report(id={self.id}, report_number='{self.report_number}', user_id={self.user_id}, status='{status_value}')>"
     
     @property
     def amount_in_rupees(self):
@@ -111,6 +112,7 @@ class Report(Base):
         """Check if report is still pending"""
         return self.status == ReportStatus.PENDING
     
+    @property
     def can_be_downloaded(self):
         """Check if report can be downloaded"""
         return bool(self.file_path and self.status in [ReportStatus.COMPLETED, ReportStatus.REVIEWED, ReportStatus.DELIVERED])
@@ -120,6 +122,12 @@ class Report(Base):
         if self.collected_at and self.delivered_at:
             return self.delivered_at - self.collected_at
         return None
+    
+    @property
+    def turnaround_time_hours(self):
+        """Get turnaround time in hours"""
+        turnaround = self.get_turnaround_time()
+        return turnaround.total_seconds() / 3600 if turnaround else None
     
     def update_status(self, new_status, notes=None):
         """Update report status with timestamp"""
