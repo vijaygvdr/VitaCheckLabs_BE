@@ -5,10 +5,12 @@ from pydantic import validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "VitaCheckLabs API"
+    APP_VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    # Database (optional for now)
+    # Database
     DATABASE_URL: str = "sqlite:///./test.db"
+    DATABASE_ECHO: bool = False
     
     # JWT Authentication
     SECRET_KEY: str = "development_secret_key_change_in_production"
@@ -18,6 +20,7 @@ class Settings(BaseSettings):
     
     # Environment
     ENVIRONMENT: str = "development"
+    DEBUG: bool = True
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = []
@@ -32,7 +35,22 @@ class Settings(BaseSettings):
     
     # File Upload
     UPLOAD_DIR: str = "./uploads"
-    MAX_FILE_SIZE: int = 10485760  # 10MB
+    MAX_UPLOAD_SIZE: int = 10485760  # 10MB
+    ALLOWED_EXTENSIONS: List[str] = ["pdf", "jpg", "jpeg", "png"]
+    
+    # Logging
+    LOG_LEVEL: str = "DEBUG"
+    
+    @validator("ALLOWED_EXTENSIONS", pre=True)
+    def parse_allowed_extensions(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            # Handle JSON string format like '["pdf", "jpg"]'
+            if v.startswith("[") and v.endswith("]"):
+                import json
+                return json.loads(v)
+            # Handle comma-separated format like 'pdf,jpg,png'
+            return [ext.strip() for ext in v.split(",")]
+        return v
     
     class Config:
         env_file = ".env"

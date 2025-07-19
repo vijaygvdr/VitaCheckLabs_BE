@@ -150,7 +150,13 @@ class LabTestBooking(BaseModel):
 
     @validator('appointment_date')
     def validate_appointment_date(cls, v):
-        if v <= datetime.now():
+        from datetime import timezone
+        # Handle both timezone-aware and timezone-naive datetimes
+        now = datetime.now(timezone.utc)
+        if v.tzinfo is None:
+            # If input is timezone-naive, assume UTC
+            v = v.replace(tzinfo=timezone.utc)
+        if v <= now:
             raise ValueError('Appointment date must be in the future')
         return v
 

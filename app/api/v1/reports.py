@@ -7,8 +7,9 @@ from datetime import datetime, timedelta
 import uuid
 import os
 import mimetypes
+import io
 from app.database import get_db
-from app.core.deps import get_current_active_user, get_admin_user
+from app.core.deps import get_current_active_user, get_admin_user, get_optional_user
 from app.models.user import User
 from app.models.report import Report, ReportStatus
 from app.models.lab_test import LabTest
@@ -94,13 +95,6 @@ async def get_reports(
     # Calculate total pages
     total_pages = (total + per_page - 1) // per_page
     
-    # Enhance reports with computed properties
-    for report in reports:
-        report.amount_in_rupees = report.amount_in_rupees
-        report.can_be_downloaded = report.can_be_downloaded()
-        turnaround = report.get_turnaround_time()
-        report.turnaround_time_hours = turnaround.total_seconds() / 3600 if turnaround else None
-    
     return ReportListResponse(
         reports=reports,
         total=total,
@@ -135,10 +129,6 @@ async def get_report(
         )
     
     # Enhance report with computed properties
-    report.amount_in_rupees = report.amount_in_rupees
-    report.can_be_downloaded = report.can_be_downloaded()
-    turnaround = report.get_turnaround_time()
-    report.turnaround_time_hours = turnaround.total_seconds() / 3600 if turnaround else None
     
     return report
 
@@ -147,12 +137,20 @@ async def get_report(
 async def create_report(
     report_data: ReportCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Create a new report.
-    Requires authentication.
+    Requires admin permissions.
     """
+    # Verify user exists
+    target_user = db.query(User).filter(User.id == report_data.user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
     # Verify lab test exists and is active
     lab_test = db.query(LabTest).filter(
         LabTest.id == report_data.lab_test_id,
@@ -170,7 +168,7 @@ async def create_report(
     
     # Create new report
     report = Report(
-        user_id=current_user.id,
+        user_id=report_data.user_id,
         lab_test_id=report_data.lab_test_id,
         report_number=report_number,
         scheduled_at=report_data.scheduled_at,
@@ -185,10 +183,6 @@ async def create_report(
     db.commit()
     db.refresh(report)
     
-    # Enhance report with computed properties
-    report.amount_in_rupees = report.amount_in_rupees
-    report.can_be_downloaded = report.can_be_downloaded()
-    
     return report
 
 
@@ -197,18 +191,13 @@ async def update_report(
     report_id: int,
     report_data: ReportUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Update a report.
-    Users can only update their own reports unless they are admin.
-    Admin can update any report.
+    Requires admin permissions.
     """
     query = db.query(Report)
-    
-    # Apply user filter - users can only update their own reports unless admin
-    if not current_user.is_admin():
-        query = query.filter(Report.user_id == current_user.id)
     
     report = query.filter(Report.id == report_id).first()
     
@@ -231,10 +220,6 @@ async def update_report(
     db.refresh(report)
     
     # Enhance report with computed properties
-    report.amount_in_rupees = report.amount_in_rupees
-    report.can_be_downloaded = report.can_be_downloaded()
-    turnaround = report.get_turnaround_time()
-    report.turnaround_time_hours = turnaround.total_seconds() / 3600 if turnaround else None
     
     return report
 
@@ -243,18 +228,13 @@ async def update_report(
 async def delete_report(
     report_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Delete a report.
-    Users can only delete their own reports unless they are admin.
-    Admin can delete any report.
+    Requires admin permissions.
     """
     query = db.query(Report)
-    
-    # Apply user filter - users can only delete their own reports unless admin
-    if not current_user.is_admin():
-        query = query.filter(Report.user_id == current_user.id)
     
     report = query.filter(Report.id == report_id).first()
     
@@ -334,24 +314,29 @@ async def upload_report_file(
         )
     
     try:
-        # Upload to S3
-        s3_service = S3Service()
+        # Save file locally
         file_extension = allowed_types[file.content_type]
-        s3_key = f"reports/{report.report_number}/{uuid.uuid4().hex}{file_extension}"
+        local_filename = f"{uuid.uuid4().hex}{file_extension}"
+        local_dir = f"uploads/reports/{report.report_number}"
+        local_path = f"{local_dir}/{local_filename}"
         
-        # Reset file pointer and upload
-        await file.seek(0)
-        s3_service.upload_file(file_content, s3_key, file.content_type)
+        # Create directory if it doesn't exist
+        os.makedirs(local_dir, exist_ok=True)
         
         # Delete old file if exists
-        if report.file_path:
+        if report.file_path and os.path.exists(report.file_path):
             try:
-                s3_service.delete_file(report.file_path)
+                os.remove(report.file_path)
+                print(f"Deleted old file: {report.file_path}")
             except Exception as e:
-                print(f"Warning: Failed to delete old file from S3: {e}")
+                print(f"Warning: Failed to delete old file: {e}")
+        
+        # Save new file
+        with open(local_path, "wb") as f:
+            f.write(file_content)
         
         # Update report with file information
-        report.file_path = s3_key
+        report.file_path = local_path
         report.file_original_name = file.filename
         report.file_size = len(file_content)
         report.file_type = file.content_type
@@ -364,8 +349,6 @@ async def upload_report_file(
         db.refresh(report)
         
         # Enhance report with computed properties
-        report.amount_in_rupees = report.amount_in_rupees
-        report.can_be_downloaded = report.can_be_downloaded()
         
         return report
         
@@ -376,16 +359,19 @@ async def upload_report_file(
         )
 
 
-@router.get("/{report_id}/download", response_model=ReportDownload)
-async def get_report_download_url(
+@router.get("/{report_id}/download")
+async def download_report_file(
     report_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get a presigned download URL for a report file.
+    Download a report file directly.
     Users can only download their own reports unless they are admin.
     """
+    from app.core.config import settings
+    import os
+    
     query = db.query(Report)
     
     # Apply user filter - users can only download their own reports unless admin
@@ -400,31 +386,37 @@ async def get_report_download_url(
             detail="Report not found"
         )
     
-    if not report.can_be_downloaded():
+    if not report.can_be_downloaded:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Report file is not available for download"
         )
     
+    # Serve the actual uploaded file
     try:
-        # Generate presigned URL
-        s3_service = S3Service()
-        download_url = s3_service.generate_presigned_url(
-            report.file_path,
-            expiration=3600  # 1 hour
-        )
+        if not os.path.exists(report.file_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Report file not found on disk"
+            )
         
-        return ReportDownload(
-            download_url=download_url,
-            expires_at=datetime.now() + timedelta(hours=1),
-            file_name=report.file_original_name or f"report_{report.report_number}.pdf",
-            file_size=report.file_size or 0
+        # Read the actual file
+        with open(report.file_path, "rb") as f:
+            file_content = f.read()
+        
+        filename = report.file_original_name or f"report_{report.report_number}.pdf"
+        media_type = report.file_type or "application/pdf"
+        
+        return StreamingResponse(
+            io.BytesIO(file_content),
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
         
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate download URL: {str(e)}"
+            detail=f"Failed to download file: {str(e)}"
         )
 
 
@@ -470,10 +462,6 @@ async def share_report(
     
     db.commit()
     db.refresh(report)
-    
-    # Enhance report with computed properties
-    report.amount_in_rupees = report.amount_in_rupees
-    report.can_be_downloaded = report.can_be_downloaded()
     
     return report
 

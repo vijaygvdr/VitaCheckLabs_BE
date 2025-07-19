@@ -11,6 +11,8 @@ from app.schemas.lab_test import (
     LabTestFilter, LabTestCategoryResponse, LabTestBooking, LabTestBookingResponse,
     LabTestStats, LabTestCategory, SampleType
 )
+from app.services.booking_service import BookingService
+from app.schemas.booking import BookingCreate
 
 router = APIRouter()
 
@@ -252,45 +254,11 @@ async def book_lab_test(
     Book a lab test.
     Requires authentication.
     """
-    # Verify test exists and is active
-    test = db.query(LabTest).filter(
-        LabTest.id == test_id,
-        LabTest.is_active == True
-    ).first()
+    # Use the booking service to create the booking
+    booking_service = BookingService(db)
     
-    if not test:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Lab test not found or inactive"
-        )
-    
-    # Validate age requirements
-    if not test.is_available_for_age(booking_data.patient_age):
-        age_msg = f"Test age requirements: "
-        if test.minimum_age and test.maximum_age:
-            age_msg += f"{test.minimum_age}-{test.maximum_age} years"
-        elif test.minimum_age:
-            age_msg += f"minimum {test.minimum_age} years"
-        elif test.maximum_age:
-            age_msg += f"maximum {test.maximum_age} years"
-        
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Patient age ({booking_data.patient_age}) does not meet test requirements. {age_msg}"
-        )
-    
-    # Validate home collection request
-    if booking_data.home_collection and not test.is_home_collection_available:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Home collection is not available for this test"
-        )
-    
-    # For this implementation, we'll create a simple booking record
-    # In a real system, this would involve creating a booking in a separate bookings table
-    booking_response = LabTestBookingResponse(
-        id=1,  # This would be generated from the bookings table
-        test=test,
+    # Convert LabTestBooking to BookingCreate schema
+    booking_create_data = BookingCreate(
         patient_name=booking_data.patient_name,
         patient_age=booking_data.patient_age,
         patient_gender=booking_data.patient_gender,
@@ -298,9 +266,26 @@ async def book_lab_test(
         home_collection=booking_data.home_collection,
         address=booking_data.address,
         phone_number=booking_data.phone_number,
-        special_instructions=booking_data.special_instructions,
-        booking_status="confirmed",
-        created_at=func.now()
+        special_instructions=booking_data.special_instructions
+    )
+    
+    # Create the booking using the service
+    booking = booking_service.create_booking(current_user.id, test_id, booking_create_data)
+    
+    # Return response in the expected format
+    booking_response = LabTestBookingResponse(
+        id=booking.id,
+        test=booking.test,
+        patient_name=booking.patient_name,
+        patient_age=booking.patient_age,
+        patient_gender=booking.patient_gender,
+        appointment_date=booking.appointment_date,
+        home_collection=booking.home_collection,
+        address=booking.address,
+        phone_number=booking.phone_number,
+        special_instructions=booking.special_instructions,
+        booking_status=booking.status.value if booking.status else "pending",
+        created_at=booking.created_at
     )
     
     return booking_response

@@ -3,6 +3,7 @@ from .user import User, UserRole
 from .lab_test import LabTest
 from .report import Report, ReportStatus
 from .company import Company
+from .booking import Booking, BookingStatus
 
 # Export all models for easy importing
 __all__ = [
@@ -11,5 +12,7 @@ __all__ = [
     "LabTest",
     "Report",
     "ReportStatus",
-    "Company"
+    "Company",
+    "Booking",
+    "BookingStatus"
 ]

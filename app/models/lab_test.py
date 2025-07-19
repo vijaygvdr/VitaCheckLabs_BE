@@ -47,6 +47,7 @@ class LabTest(Base):
     
     # Relationships
     reports = relationship("Report", back_populates="lab_test")
+    bookings = relationship("Booking", back_populates="test")
     
     # Indexes for performance
     __table_args__ = (

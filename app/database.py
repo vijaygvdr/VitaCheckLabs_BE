@@ -7,11 +7,12 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class DatabaseSettings(BaseSettings):
-    database_url: str = "postgresql://username:password@localhost/vitachecklabs"
+    database_url: str = "sqlite:///./test.db"
     database_echo: bool = False
     
     class Config:
         env_file = ".env"
+        extra = "ignore"  # Ignore extra fields from .env
 
 @lru_cache()
 def get_database_settings():
