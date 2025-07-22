@@ -1,11 +1,18 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 from enum import Enum
 
-from app.models.booking import BookingStatus
 from app.schemas.lab_test import LabTestResponse
 from app.schemas.auth import UserResponse
+
+class BookingStatus(str, Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    NO_SHOW = "no_show"
 
 
 class BookingStatusUpdate(BaseModel):
@@ -41,7 +48,7 @@ class BookingAdminUpdate(BaseModel):
 
 class BookingResponse(BaseModel):
     """Complete booking response schema"""
-    id: int
+    id: Union[int, str]
     booking_reference: str
     
     # Patient information
@@ -151,6 +158,17 @@ class BookingCalendarEvent(BaseModel):
 
 
 # Reuse existing booking schemas from lab_test.py for compatibility
+class BookingUpdate(BaseModel):
+    """Schema for updating an existing booking"""
+    patient_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Patient full name")
+    patient_age: Optional[int] = Field(None, ge=0, le=120, description="Patient age in years")
+    patient_gender: Optional[str] = Field(None, min_length=1, max_length=20, description="Patient gender")
+    appointment_date: Optional[datetime] = Field(None, description="Preferred appointment date and time")
+    home_collection: Optional[bool] = Field(None, description="Whether home collection is required")
+    address: Optional[str] = Field(None, max_length=500, description="Address for home collection")
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=20, description="Contact phone number")
+    special_instructions: Optional[str] = Field(None, max_length=500, description="Special instructions or notes")
+
 class BookingCreate(BaseModel):
     """Schema for creating a new booking (reused from lab_test.py)"""
     patient_name: str = Field(..., min_length=1, max_length=100, description="Patient full name")

@@ -70,4 +70,4 @@ alembic/versions/
 
 # Temporary files
 *.tmp
-*.temp
+*.tempaws_env/

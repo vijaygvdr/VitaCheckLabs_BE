@@ -1,0 +1,31 @@
+{
+    "Rules": [
+        {
+            "ID": "ReportLifecycleRule",
+            "Status": "Enabled",
+            "Filter": {
+                "Prefix": "lab-reports/"
+            },
+            "Transitions": [
+                {
+                    "Days": 90,
+                    "StorageClass": "STANDARD_IA"
+                },
+                {
+                    "Days": 365,
+                    "StorageClass": "GLACIER"
+                }
+            ]
+        },
+        {
+            "ID": "CleanupTempUploads",
+            "Status": "Enabled",
+            "Filter": {
+                "Prefix": "temp-uploads/"
+            },
+            "Expiration": {
+                "Days": 1
+            }
+        }
+    ]
+}
