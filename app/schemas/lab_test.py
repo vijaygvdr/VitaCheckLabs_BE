@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field, validator
@@ -81,7 +81,7 @@ class LabTestUpdate(BaseModel):
 
 class LabTestResponse(BaseModel):
     """Schema for lab test response"""
-    id: int
+    id: Union[int, str]
     name: str
     code: str
     description: Optional[str] = None
@@ -102,11 +102,17 @@ class LabTestResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    # Computed fields
-    display_name: str
-    price_formatted: str
-
     model_config = {"from_attributes": True}
+    
+    @property
+    def display_name(self) -> str:
+        """Return formatted display name"""
+        return f"{self.name} ({self.code})"
+    
+    @property
+    def price_formatted(self) -> str:
+        """Return formatted price"""
+        return f"₹{self.price:.2f}"
 
 
 class LabTestListResponse(BaseModel):
@@ -163,7 +169,7 @@ class LabTestBooking(BaseModel):
 
 class LabTestBookingResponse(BaseModel):
     """Schema for lab test booking response"""
-    id: int
+    id: Union[int, str]
     test: LabTestResponse
     patient_name: str
     patient_age: int

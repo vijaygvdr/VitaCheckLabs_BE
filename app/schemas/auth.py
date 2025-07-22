@@ -1,7 +1,12 @@
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from app.models.user import UserRole
+from enum import Enum
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+    LAB_TECHNICIAN = "lab_technician"
 
 
 class UserRegister(BaseModel):
@@ -35,7 +40,7 @@ class TokenRefresh(BaseModel):
 
 class UserResponse(BaseModel):
     """Schema for user information response"""
-    id: int
+    id: Union[int, str]
     username: str
     email: str
     first_name: Optional[str] = None

@@ -1,0 +1,42 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowApplicationAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "arn:aws:iam::430118843240:root",
+                    "arn:aws:iam::430118843240:user/vitachecklabs-dev"
+                ]
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "s3:PutLifecycleConfiguration",
+                "s3:GetLifecycleConfiguration"
+            ],
+            "Resource": [
+                "arn:aws:s3:::vitachecklabs-reports-poc",
+                "arn:aws:s3:::vitachecklabs-reports-poc/*"
+            ]
+        },
+        {
+            "Sid": "DenyPublicRead",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::vitachecklabs-reports-poc/*",
+            "Condition": {
+                "StringNotEquals": {
+                    "aws:PrincipalArn": [
+                        "arn:aws:iam::430118843240:root",
+                        "arn:aws:iam::430118843240:user/vitachecklabs-dev"
+                    ]
+                }
+            }
+        }
+    ]
+}

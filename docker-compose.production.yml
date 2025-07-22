@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  vitachecklabs-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=dynamodb://us-east-1
+      - DATABASE_TYPE=dynamodb
+      - AWS_REGION=us-east-1
+      - S3_BUCKET_NAME=vitachecklabs-reports-poc-v2
+      - S3_REGION=us-east-1
+      - ENVIRONMENT=production
+      - DEBUG=false
+      # AWS credentials will be provided via environment or IAM roles
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      # Optional: mount AWS credentials if not using IAM roles
+      - ~/.aws:/home/appuser/.aws:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vitachecklabs.rule=Host(`api.vitachecklabs.com`)"
+      - "traefik.http.routers.vitachecklabs.tls=true"
+      - "traefik.http.routers.vitachecklabs.tls.certresolver=letsencrypt"

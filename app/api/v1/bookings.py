@@ -87,11 +87,11 @@ def get_my_bookings(
             "status": booking.status,
             "home_collection": booking.home_collection,
             "created_at": booking.created_at,
-            "test_name": booking.test.name,
-            "test_code": booking.test.code,
-            "test_price": float(booking.test.price),
-            "user_email": booking.user.email,
-            "user_name": booking.user.full_name
+            "test_name": booking.test.name if booking.test else "Unknown Test",
+            "test_code": booking.test.code if booking.test else "N/A",
+            "test_price": float(booking.test.price) if booking.test else 0.0,
+            "user_email": booking.user.email if booking.user else "Unknown",
+            "user_name": booking.user.full_name if booking.user else "Unknown User"
         }
         bookings_response.append(booking_dict)
     
@@ -248,11 +248,11 @@ def get_all_bookings(
             "status": booking.status,
             "home_collection": booking.home_collection,
             "created_at": booking.created_at,
-            "test_name": booking.test.name,
-            "test_code": booking.test.code,
-            "test_price": float(booking.test.price),
-            "user_email": booking.user.email,
-            "user_name": booking.user.full_name
+            "test_name": booking.test.name if booking.test else "Unknown Test",
+            "test_code": booking.test.code if booking.test else "N/A",
+            "test_price": float(booking.test.price) if booking.test else 0.0,
+            "user_email": booking.user.email if booking.user else "Unknown",
+            "user_name": booking.user.full_name if booking.user else "Unknown User"
         }
         bookings_response.append(booking_dict)
     

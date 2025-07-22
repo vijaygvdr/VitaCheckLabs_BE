@@ -8,9 +8,24 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    # Database
-    DATABASE_URL: str = "sqlite:///./test.db"
+    # Database  
+    DATABASE_URL: str = "dynamodb://us-east-1"
     DATABASE_ECHO: bool = False
+    DATABASE_TYPE: str = "dynamodb"
+    
+    # AWS Configuration
+    AWS_REGION: str = "us-east-1"
+    
+    # S3 Configuration
+    S3_BUCKET_NAME: str = "default-bucket"
+    S3_REGION: str = "us-east-1"
+    S3_REPORTS_PREFIX: str = "lab-reports/"
+    
+    # DynamoDB Configuration
+    DYNAMODB_USERS_TABLE: str = "vitachecklabs-users"
+    DYNAMODB_LAB_TESTS_TABLE: str = "vitachecklabs-lab-tests"
+    DYNAMODB_REPORTS_TABLE: str = "vitachecklabs-reports"
+    DYNAMODB_BOOKINGS_TABLE: str = "vitachecklabs-bookings"
     
     # JWT Authentication
     SECRET_KEY: str = "development_secret_key_change_in_production"
@@ -23,15 +38,18 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: str = "*"
     
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    @property
+    def cors_origins(self) -> List[str]:
+        """Get CORS origins as a list"""
+        if self.BACKEND_CORS_ORIGINS == "*":
+            return ["*"]
+        elif self.BACKEND_CORS_ORIGINS.startswith("[") and self.BACKEND_CORS_ORIGINS.endswith("]"):
+            import json
+            return json.loads(self.BACKEND_CORS_ORIGINS)
+        else:
+            return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
     
     # File Upload
     UPLOAD_DIR: str = "./uploads"

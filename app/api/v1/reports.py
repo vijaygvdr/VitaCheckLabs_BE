@@ -42,8 +42,8 @@ async def get_reports(
     Get list of user's reports with filtering and pagination.
     Users can only see their own reports unless they are admin.
     """
-    # Build base query
-    query = db.query(Report).join(LabTest).join(User)
+    # Build base query with proper joins
+    query = db.query(Report).join(LabTest, Report.lab_test_id == LabTest.id).join(User, Report.user_id == User.id)
     
     # Apply user filter - users can only see their own reports unless admin
     if not current_user.is_admin():
@@ -114,7 +114,7 @@ async def get_report(
     Get a specific report by ID.
     Users can only access their own reports unless they are admin.
     """
-    query = db.query(Report).join(LabTest).join(User)
+    query = db.query(Report).join(LabTest, Report.lab_test_id == LabTest.id).join(User, Report.user_id == User.id)
     
     # Apply user filter - users can only see their own reports unless admin
     if not current_user.is_admin():
@@ -445,7 +445,7 @@ async def share_report(
             detail="Report not found"
         )
     
-    if not report.can_be_downloaded():
+    if not report.can_be_downloaded:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Report is not ready for sharing"
