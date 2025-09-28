@@ -1,30 +1,104 @@
-# VitaCheckLabs AWS Deployment Guide
+# 🚀 AWS ECS Deployment Guide - VitaCheckLabs AI System
 
-## 🎉 Migration Complete!
+## 🎉 Complete AI-Powered Lab Test System Ready for Deployment!
 
-Your VitaCheckLabs application has been successfully migrated to use:
-- ✅ **DynamoDB** for all data storage (users, lab tests, reports, bookings)
-- ✅ **S3** for file storage (lab report PDFs, images)
-- ✅ **Docker** containerization ready for AWS deployment
+Your VitaCheckLabs application now includes:
+- ✅ **AI-Powered Booking Copilot** with 11 intelligent symptom rules
+- ✅ **4 Comprehensive Lab Tests** (Vitamin D, LFT, TFT, CBC)
+- ✅ **DynamoDB** for all data storage and AI rules
+- ✅ **Real-time symptom analysis** and test recommendations
+- ✅ **Admin APIs** for managing lab tests and AI rules
 
-## 📊 Current Status
+## 🧠 AI Features Included
 
-### Data Migration
-- **4 Users** migrated to DynamoDB
-- **2 Lab Tests** migrated to DynamoDB  
-- **3 Reports** migrated to DynamoDB
-- **3 Bookings** migrated to DynamoDB
-- **S3 Bucket** configured: `vitachecklabs-reports-poc-v2`
+### Intelligent Lab Test Recommendations
+- **Vitamin D Test**: Detects bone pain, fatigue, depression symptoms
+- **Liver Function Test**: Recognizes jaundice, nausea, abdominal pain
+- **Thyroid Function Test**: Identifies weight changes, temperature sensitivity, heart palpitations
+- **Complete Blood Count**: Flags fatigue, frequent infections, easy bruising
 
-### API Endpoints Available
-All endpoints now use DynamoDB:
-- `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - User authentication
-- `GET /api/v1/lab-tests/` - List lab tests
-- `GET /api/v1/reports/` - List user reports
-- `POST /api/v1/reports/upload` - Upload report files to S3
-- `GET /api/v1/bookings/my` - List user bookings
-- `POST /api/v1/bookings/` - Create new bookings
+### Smart Booking Copilot
+- **Natural Language Processing** of user symptoms
+- **Contextual Conversations** with medical disclaimers
+- **Progressive Symptom Collection** and analysis
+- **Intelligent Test Scoring** based on symptom matching
+
+## 🚀 Quick Deployment (5 Steps)
+
+### Step 1: Prerequisites Setup
+```bash
+# Ensure AWS CLI is configured
+aws sts get-caller-identity
+
+# Ensure Docker is running
+docker version
+```
+
+### Step 2: Store Secrets in AWS
+```bash
+# Store JWT Secret Key
+aws ssm put-parameter \
+  --name "/vitachecklabs/jwt/secret-key" \
+  --value "your-secure-jwt-secret-key-change-this" \
+  --type "SecureString" \
+  --region us-east-1
+
+# Store OpenAI API Key (for AI features)
+aws ssm put-parameter \
+  --name "/vitachecklabs/openai/api-key" \
+  --value "your-openai-api-key-here" \
+  --type "SecureString" \
+  --region us-east-1
+```
+
+### Step 3: Deploy to AWS ECS
+```bash
+# Make deploy script executable
+chmod +x deploy/deploy-poc.sh
+
+# Run deployment (takes ~5-10 minutes)
+./deploy/deploy-poc.sh
+```
+
+### Step 4: Test the AI System
+```bash
+# Get PUBLIC_IP from deployment output, then test:
+curl -X POST "http://${PUBLIC_IP}:8000/api/v1/booking-copilot/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "I have jaundice and dark urine. My eyes look yellow and I feel nauseous.",
+    "session_id": null,
+    "user_id": "test-user-123"
+  }'
+
+# Expected: AI recommends Liver Function Test (LFT)
+```
+
+### Step 5: Access Your Application
+- **Health Check**: `http://${PUBLIC_IP}:8000/health`
+- **API Documentation**: `http://${PUBLIC_IP}:8000/docs`
+- **AI Booking Copilot**: `http://${PUBLIC_IP}:8000/api/v1/booking-copilot/chat`
+
+## 💰 Cost Management
+```bash
+# Scale down when not in use (saves ~90% cost)
+aws ecs update-service \
+  --cluster vitachecklabs-poc-cluster \
+  --service vitachecklabs-poc-service \
+  --desired-count 0 \
+  --region us-east-1
+
+# Scale back up
+aws ecs update-service \
+  --cluster vitachecklabs-poc-cluster \
+  --service vitachecklabs-poc-service \
+  --desired-count 1 \
+  --region us-east-1
+```
+
+**Monthly Cost**: ~$3-8 when active, ~$0.50 when scaled to 0
+
+## 📋 Detailed Information
 
 ### Files Created for Deployment
 ```

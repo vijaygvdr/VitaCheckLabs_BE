@@ -39,6 +39,10 @@
           "value": "us-east-1"
         },
         {
+          "name": "S3_REPORTS_PREFIX",
+          "value": "lab-reports/"
+        },
+        {
           "name": "ENVIRONMENT",
           "value": "poc"
         },
@@ -55,14 +59,70 @@
           "value": "VitaCheckLabs API POC"
         },
         {
+          "name": "APP_VERSION",
+          "value": "1.0.0"
+        },
+        {
           "name": "BACKEND_CORS_ORIGINS",
           "value": "*"
+        },
+        {
+          "name": "DYNAMODB_USERS_TABLE",
+          "value": "vitachecklabs-users"
+        },
+        {
+          "name": "DYNAMODB_LAB_TESTS_TABLE",
+          "value": "vitachecklabs-lab-tests"
+        },
+        {
+          "name": "DYNAMODB_REPORTS_TABLE",
+          "value": "vitachecklabs-reports"
+        },
+        {
+          "name": "DYNAMODB_BOOKINGS_TABLE",
+          "value": "vitachecklabs-bookings"
+        },
+        {
+          "name": "DYNAMODB_REPORT_EXPLANATIONS_TABLE",
+          "value": "vitachecklabs-report-explanations"
+        },
+        {
+          "name": "DYNAMODB_AI_RULES_TABLE",
+          "value": "vitachecklabs-ai-rules"
+        },
+        {
+          "name": "DYNAMODB_AGENT_AUDIT_TABLE",
+          "value": "vitachecklabs-agent-audit"
+        },
+        {
+          "name": "DYNAMODB_REMINDERS_TABLE",
+          "value": "vitachecklabs-reminders"
+        },
+        {
+          "name": "ALGORITHM",
+          "value": "HS256"
+        },
+        {
+          "name": "ACCESS_TOKEN_EXPIRE_MINUTES",
+          "value": "30"
+        },
+        {
+          "name": "REFRESH_TOKEN_EXPIRE_DAYS",
+          "value": "7"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "value": "INFO"
         }
       ],
       "secrets": [
         {
           "name": "SECRET_KEY",
           "valueFrom": "/vitachecklabs/jwt/secret-key"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "/vitachecklabs/openai/api-key"
         }
       ],
       "logConfiguration": {
