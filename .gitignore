@@ -71,3 +71,5 @@ alembic/versions/
 # Temporary files
 *.tmp
 *.tempaws_env/
+aws_env/
+.env.dynamodb

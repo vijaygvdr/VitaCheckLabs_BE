@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import ValidationError as PydanticValidationError
 
@@ -14,7 +13,6 @@ from app.core.error_handlers import (
     starlette_http_exception_handler,
     validation_exception_handler,
     pydantic_validation_exception_handler,
-    sqlalchemy_exception_handler,
     generic_exception_handler
 )
 from app.core.rate_limiting import RateLimitMiddleware
@@ -37,7 +35,6 @@ app = FastAPI(
 app.add_exception_handler(VitaCheckLabsException, custom_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(PydanticValidationError, pydantic_validation_exception_handler)
-app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
 app.add_exception_handler(StarletteHTTPException, starlette_http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
@@ -80,20 +77,21 @@ async def health_check():
     
     overall_healthy = True
     
-    # Check database health
+    # Check DynamoDB health
     try:
-        from app.database import get_db
-        next(get_db())  # Try to get a database connection
-        health_status["components"]["database"] = {
+        from app.services.dynamodb_service import lab_test_service
+        # Simple health check - verify DynamoDB connection
+        lab_test_service.get_all_tests()
+        health_status["components"]["dynamodb"] = {
             "status": "healthy",
             "details": {"connection": "ok"}
         }
-        logger.debug("Database health check passed")
+        logger.debug("DynamoDB health check passed")
     except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        health_status["components"]["database"] = create_health_check_error(
-            "database", 
-            f"Database connection failed: {str(e)}"
+        logger.error(f"DynamoDB health check failed: {str(e)}")
+        health_status["components"]["dynamodb"] = create_health_check_error(
+            "dynamodb",
+            f"DynamoDB connection failed: {str(e)}"
         )
         overall_healthy = False
     

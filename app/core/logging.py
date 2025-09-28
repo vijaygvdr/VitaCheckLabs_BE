@@ -112,7 +112,6 @@ def setup_logging():
     # Disable some noisy loggers in production
     if settings.ENVIRONMENT == "production":
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

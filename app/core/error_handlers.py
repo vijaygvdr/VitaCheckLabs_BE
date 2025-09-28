@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional, Union
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError, DatabaseError
 from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -238,52 +237,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: PydanticV
         details=details
     )
 
-
-async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-    """Handle SQLAlchemy database errors."""
-    error_code = "DATABASE_ERROR"
-    message = "Database operation failed"
-    details = {"error_type": type(exc).__name__}
-    
-    # Handle specific SQLAlchemy exceptions
-    if isinstance(exc, IntegrityError):
-        error_code = "DATABASE_INTEGRITY_ERROR"
-        message = "Database integrity constraint violated"
-        
-        # Extract constraint information if available
-        if hasattr(exc, 'orig') and exc.orig:
-            orig_error = str(exc.orig)
-            if "UNIQUE constraint failed" in orig_error:
-                message = "Duplicate entry found"
-                error_code = "DUPLICATE_ENTRY"
-            elif "FOREIGN KEY constraint failed" in orig_error:
-                message = "Referenced record not found"
-                error_code = "FOREIGN_KEY_ERROR"
-            
-            details["constraint_error"] = orig_error
-    
-    elif isinstance(exc, DatabaseError):
-        error_code = "DATABASE_CONNECTION_ERROR"
-        message = "Database connection failed"
-    
-    # Log the full exception for debugging
-    logger.error(
-        f"Database error: {message}",
-        extra={
-            "error_type": type(exc).__name__,
-            "path": str(request.url.path),
-            "request_id": get_request_id(request)
-        },
-        exc_info=True
-    )
-    
-    return create_error_response(
-        request=request,
-        error_code=error_code,
-        message=message,
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        details=details
-    )
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:

@@ -1,89 +1,46 @@
-from typing import Optional, Union
+from typing import Optional
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
-from enum import Enum
 
-class UserRole(str, Enum):
-    ADMIN = "admin"
-    USER = "user"
-    LAB_TECHNICIAN = "lab_technician"
+class UserBase(BaseModel):
+    email: EmailStr
+    is_active: bool = True
+    is_superuser: bool = False
+    full_name: Optional[str] = None
 
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: Optional[str] = None
 
-class UserRegister(BaseModel):
-    """Schema for user registration request"""
-    username: str = Field(..., min_length=3, max_length=50, description="Username for login")
-    email: EmailStr = Field(..., description="Valid email address")
-    password: str = Field(..., min_length=8, max_length=100, description="Password (min 8 characters)")
-    first_name: Optional[str] = Field(None, max_length=50, description="First name")
-    last_name: Optional[str] = Field(None, max_length=50, description="Last name")
-    phone_number: Optional[str] = Field(None, max_length=20, description="Phone number")
+class UserRegister(UserCreate):
+    """User registration schema"""
+    pass
 
+class UserUpdate(BaseModel):
+    password: Optional[str] = None
+    full_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserResponse(UserBase):
+    id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class UserLogin(BaseModel):
-    """Schema for user login request"""
-    username: str = Field(..., description="Username or email")
-    password: str = Field(..., description="Password")
+    email: EmailStr
+    password: str
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
-class TokenResponse(BaseModel):
-    """Schema for token response"""
-    access_token: str = Field(..., description="JWT access token")
-    refresh_token: str = Field(..., description="JWT refresh token")
-    token_type: str = Field(default="bearer", description="Token type")
-    expires_in: int = Field(..., description="Token expiration in seconds")
-
-
-class TokenRefresh(BaseModel):
-    """Schema for token refresh request"""
-    refresh_token: str = Field(..., description="Valid refresh token")
-
-
-class UserResponse(BaseModel):
-    """Schema for user information response"""
-    id: Union[int, str]
-    username: str
-    email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    phone_number: Optional[str] = None
-    role: UserRole
-    is_active: bool
-    is_verified: bool
-    created_at: datetime
-    last_login: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
-
-
-class AuthResponse(BaseModel):
-    """Schema for authentication response with user data and tokens"""
-    user: UserResponse
-    tokens: TokenResponse
-
-
-class PasswordReset(BaseModel):
-    """Schema for password reset request"""
-    email: EmailStr = Field(..., description="Email address for password reset")
-
-
-class PasswordResetConfirm(BaseModel):
-    """Schema for password reset confirmation"""
-    token: str = Field(..., description="Password reset token")
-    new_password: str = Field(..., min_length=8, max_length=100, description="New password")
-
+class TokenResponse(Token):
+    """Token response schema"""
+    pass
 
 class ChangePassword(BaseModel):
-    """Schema for password change request"""
-    current_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=8, max_length=100, description="New password")
-
-
-class EmailVerification(BaseModel):
-    """Schema for email verification"""
-    token: str = Field(..., description="Email verification token")
-
-
-class AuthError(BaseModel):
-    """Schema for authentication error response"""
-    detail: str = Field(..., description="Error message")
-    error_code: str = Field(..., description="Error code for client handling")
+    current_password: str
+    new_password: str

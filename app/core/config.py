@@ -26,12 +26,19 @@ class Settings(BaseSettings):
     DYNAMODB_LAB_TESTS_TABLE: str = "vitachecklabs-lab-tests"
     DYNAMODB_REPORTS_TABLE: str = "vitachecklabs-reports"
     DYNAMODB_BOOKINGS_TABLE: str = "vitachecklabs-bookings"
+    DYNAMODB_REPORT_EXPLANATIONS_TABLE: str = "vitachecklabs-report-explanations"
+    DYNAMODB_AI_RULES_TABLE: str = "vitachecklabs-ai-rules"
+    DYNAMODB_AGENT_AUDIT_TABLE: str = "vitachecklabs-agent-audit"
+    DYNAMODB_REMINDERS_TABLE: str = "vitachecklabs-reminders"
     
     # JWT Authentication
     SECRET_KEY: str = "development_secret_key_change_in_production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # AI/OpenAI Configuration
+    OPENAI_API_KEY: str = ""
     
     # Environment
     ENVIRONMENT: str = "development"
@@ -73,6 +80,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields in .env
 
 
 settings = Settings()

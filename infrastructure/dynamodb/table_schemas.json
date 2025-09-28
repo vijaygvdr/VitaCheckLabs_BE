@@ -1,0 +1,190 @@
+{
+  "ai_rules_table": {
+    "TableName": "vitachecklabs-ai-rules",
+    "KeySchema": [
+      {
+        "AttributeName": "rule_id",
+        "KeyType": "HASH"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "rule_id",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "is_active",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "created_at",
+        "AttributeType": "S"
+      }
+    ],
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "ActiveRulesIndex",
+        "KeySchema": [
+          {
+            "AttributeName": "is_active",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "created_at",
+            "KeyType": "RANGE"
+          }
+        ],
+        "Projection": {
+          "ProjectionType": "ALL"
+        },
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "development"
+      },
+      {
+        "Key": "Service",
+        "Value": "booking-copilot"
+      }
+    ]
+  },
+  "agent_audit_table": {
+    "TableName": "vitachecklabs-agent-audit",
+    "KeySchema": [
+      {
+        "AttributeName": "session_id",
+        "KeyType": "HASH"
+      },
+      {
+        "AttributeName": "step_number",
+        "KeyType": "RANGE"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "session_id",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "step_number",
+        "AttributeType": "N"
+      },
+      {
+        "AttributeName": "created_at",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "user_id",
+        "AttributeType": "S"
+      }
+    ],
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "UserAuditIndex",
+        "KeySchema": [
+          {
+            "AttributeName": "user_id",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "created_at",
+            "KeyType": "RANGE"
+          }
+        ],
+        "Projection": {
+          "ProjectionType": "ALL"
+        },
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "development"
+      },
+      {
+        "Key": "Service",
+        "Value": "booking-copilot"
+      }
+    ]
+  },
+  "reminders_table": {
+    "TableName": "vitachecklabs-reminders",
+    "KeySchema": [
+      {
+        "AttributeName": "reminder_id",
+        "KeyType": "HASH"
+      }
+    ],
+    "AttributeDefinitions": [
+      {
+        "AttributeName": "reminder_id",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "scheduled_at",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "status",
+        "AttributeType": "S"
+      },
+      {
+        "AttributeName": "booking_id",
+        "AttributeType": "S"
+      }
+    ],
+    "GlobalSecondaryIndexes": [
+      {
+        "IndexName": "ScheduledRemindersIndex",
+        "KeySchema": [
+          {
+            "AttributeName": "status",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "scheduled_at",
+            "KeyType": "RANGE"
+          }
+        ],
+        "Projection": {
+          "ProjectionType": "ALL"
+        },
+        "BillingMode": "PAY_PER_REQUEST"
+      },
+      {
+        "IndexName": "BookingRemindersIndex",
+        "KeySchema": [
+          {
+            "AttributeName": "booking_id",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "scheduled_at",
+            "KeyType": "RANGE"
+          }
+        ],
+        "Projection": {
+          "ProjectionType": "ALL"
+        },
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "development"
+      },
+      {
+        "Key": "Service",
+        "Value": "booking-copilot"
+      }
+    ]
+  }
+}

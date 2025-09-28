@@ -1,219 +1,132 @@
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Union
-from datetime import datetime
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, EmailStr
+from datetime import datetime, date, time
 from enum import Enum
-
-from app.schemas.lab_test import LabTestResponse
-from app.schemas.auth import UserResponse
+from decimal import Decimal
 
 class BookingStatus(str, Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
-    IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
 
+class PaymentStatus(str, Enum):
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
 
-class BookingStatusUpdate(BaseModel):
-    """Schema for updating booking status"""
-    status: BookingStatus
-    admin_notes: Optional[str] = Field(None, max_length=500, description="Admin notes for status change")
+class CollectionType(str, Enum):
+    LAB_VISIT = "lab_visit"
+    HOME_COLLECTION = "home_collection"
 
+class TimeSlot(BaseModel):
+    start_time: time
+    end_time: time
+    is_available: bool = True
 
-class BookingCancellation(BaseModel):
-    """Schema for cancelling a booking"""
-    cancellation_reason: Optional[str] = Field(None, max_length=500, description="Reason for cancellation")
-
-
-class BookingAdminUpdate(BaseModel):
-    """Schema for admin booking updates"""
-    status: Optional[BookingStatus] = None
-    admin_notes: Optional[str] = Field(None, max_length=500)
-    appointment_date: Optional[datetime] = None
-    
-    @validator('appointment_date')
-    def validate_appointment_date(cls, v):
-        if v:
-            from datetime import timezone
-            # Handle both timezone-aware and timezone-naive datetimes
-            now = datetime.now(timezone.utc)
-            if v.tzinfo is None:
-                # If input is timezone-naive, assume UTC
-                v = v.replace(tzinfo=timezone.utc)
-            if v <= now:
-                raise ValueError('Appointment date must be in the future')
-        return v
-
-
-class BookingResponse(BaseModel):
-    """Complete booking response schema"""
-    id: Union[int, str]
-    booking_reference: str
-    
-    # Patient information
+class BookingBase(BaseModel):
     patient_name: str
-    patient_age: int
-    patient_gender: str
-    
-    # Appointment details
-    appointment_date: datetime
-    home_collection: bool
-    address: Optional[str]
-    phone_number: str
-    special_instructions: Optional[str]
-    
-    # Booking management
-    status: BookingStatus
-    admin_notes: Optional[str]
-    cancellation_reason: Optional[str]
-    
-    # Audit fields
+    patient_email: Optional[EmailStr] = None
+    patient_phone: Optional[str] = None
+    patient_age: Optional[int] = None
+    patient_gender: Optional[str] = None
+    test_ids: Optional[List[str]] = []
+    panel_ids: Optional[List[str]] = []
+    appointment_date: Optional[datetime] = None
+    appointment_time: Optional[time] = None
+    collection_type: Optional[CollectionType] = None
+    address: Optional[str] = None  # Required for home collection
+    special_instructions: Optional[str] = None
+
+class BookingCreate(BookingBase):
+    """Create booking schema"""
+    pass
+
+class BookingUpdate(BaseModel):
+    patient_name: Optional[str] = None
+    patient_email: Optional[EmailStr] = None
+    patient_phone: Optional[str] = None
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[time] = None
+    collection_type: Optional[CollectionType] = None
+    address: Optional[str] = None
+    special_instructions: Optional[str] = None
+    status: Optional[BookingStatus] = None
+    payment_status: Optional[PaymentStatus] = None
+
+class BookingResponse(BookingBase):
+    id: str
+    booking_reference: Optional[str] = None
+    status: Optional[BookingStatus] = None
+    payment_status: Optional[PaymentStatus] = None
+    total_amount: Optional[Decimal] = None
     created_at: datetime
-    updated_at: datetime
-    cancelled_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    
-    # Related objects
-    test: LabTestResponse
-    user: UserResponse
-    
+    updated_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
-
 
 class BookingListResponse(BaseModel):
-    """Simplified booking response for list views"""
-    id: int
-    booking_reference: str
-    patient_name: str
-    patient_age: int
-    appointment_date: datetime
-    status: BookingStatus
-    home_collection: bool
-    created_at: datetime
-    
-    # Test information
-    test_name: str
-    test_code: str
-    test_price: float
-    
-    # User information
-    user_email: str
-    user_name: str
-    
-    class Config:
-        from_attributes = True
+    bookings: List[BookingResponse]
+    total: int
+    page: int
+    size: int
 
-
-class BookingFilterParams(BaseModel):
-    """Query parameters for filtering bookings"""
+class BookingFilter(BaseModel):
     status: Optional[BookingStatus] = None
-    user_id: Optional[int] = None
-    test_id: Optional[int] = None
-    date_from: Optional[datetime] = None
-    date_to: Optional[datetime] = None
-    home_collection: Optional[bool] = None
-    page: int = Field(1, ge=1, description="Page number")
-    size: int = Field(50, ge=1, le=100, description="Page size")
-    
-    @validator('date_to')
-    def validate_date_range(cls, v, values):
-        if v and 'date_from' in values and values['date_from'] and v <= values['date_from']:
-            raise ValueError('date_to must be after date_from')
-        return v
+    payment_status: Optional[PaymentStatus] = None
+    collection_type: Optional[CollectionType] = None
+    appointment_date: Optional[date] = None
+    patient_email: Optional[EmailStr] = None
 
+class AvailableSlot(BaseModel):
+    date: date
+    time_slots: List[TimeSlot]
+    available_count: int
 
-class BookingStatsResponse(BaseModel):
-    """Booking statistics response"""
+class SlotAvailability(BaseModel):
+    date: date
+    available_slots: List[TimeSlot]
+    booked_slots: List[TimeSlot]
+    total_capacity: int
+
+class BookingStats(BaseModel):
     total_bookings: int
     pending_bookings: int
     confirmed_bookings: int
     completed_bookings: int
     cancelled_bookings: int
-    no_show_bookings: int
-    today_bookings: int
-    upcoming_bookings: int
-    home_collection_bookings: int
-    
-    class Config:
-        from_attributes = True
+    revenue_total: Decimal
+    revenue_pending: Decimal
 
+class PaymentDetails(BaseModel):
+    amount: Decimal
+    payment_method: str
+    transaction_id: Optional[str] = None
+    payment_date: Optional[datetime] = None
 
-class BookingCalendarEvent(BaseModel):
-    """Booking calendar event for calendar views"""
-    id: int
-    title: str  # Patient name + test name
-    start: datetime  # appointment_date
-    end: datetime  # appointment_date + estimated duration
-    status: BookingStatus
-    color: str  # Color based on status
+class BookingConfirmation(BaseModel):
+    booking_id: int
+    confirmation_number: str
     patient_name: str
-    test_name: str
-    phone_number: str
-    home_collection: bool
-    
-    class Config:
-        from_attributes = True
+    appointment_details: str
+    preparation_instructions: List[str]
+    contact_info: Dict[str, str]
 
-
-# Reuse existing booking schemas from lab_test.py for compatibility
-class BookingUpdate(BaseModel):
-    """Schema for updating an existing booking"""
-    patient_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Patient full name")
-    patient_age: Optional[int] = Field(None, ge=0, le=120, description="Patient age in years")
-    patient_gender: Optional[str] = Field(None, min_length=1, max_length=20, description="Patient gender")
-    appointment_date: Optional[datetime] = Field(None, description="Preferred appointment date and time")
-    home_collection: Optional[bool] = Field(None, description="Whether home collection is required")
-    address: Optional[str] = Field(None, max_length=500, description="Address for home collection")
-    phone_number: Optional[str] = Field(None, min_length=10, max_length=20, description="Contact phone number")
-    special_instructions: Optional[str] = Field(None, max_length=500, description="Special instructions or notes")
-
-class BookingCreate(BaseModel):
-    """Schema for creating a new booking (reused from lab_test.py)"""
-    patient_name: str = Field(..., min_length=1, max_length=100, description="Patient full name")
-    patient_age: int = Field(..., ge=0, le=120, description="Patient age in years")
-    patient_gender: str = Field(..., min_length=1, max_length=20, description="Patient gender")
-    appointment_date: datetime = Field(..., description="Preferred appointment date and time")
-    home_collection: bool = Field(False, description="Whether home collection is required")
-    address: Optional[str] = Field(None, max_length=500, description="Address for home collection")
-    phone_number: str = Field(..., min_length=10, max_length=20, description="Contact phone number")
-    special_instructions: Optional[str] = Field(None, max_length=500, description="Special instructions or notes")
-
-    @validator('appointment_date')
-    def validate_appointment_date(cls, v):
-        from datetime import timezone
-        # Handle both timezone-aware and timezone-naive datetimes
-        now = datetime.now(timezone.utc)
-        if v.tzinfo is None:
-            # If input is timezone-naive, assume UTC
-            v = v.replace(tzinfo=timezone.utc)
-        if v <= now:
-            raise ValueError('Appointment date must be in the future')
-        return v
-
-    @validator('address')
-    def validate_address_for_home_collection(cls, v, values):
-        if values.get('home_collection') and not v:
-            raise ValueError('Address is required for home collection')
-        return v
-
-
-class BookingCreateResponse(BaseModel):
-    """Response schema for booking creation"""
-    id: int
-    booking_reference: str
-    patient_name: str
-    patient_age: int
-    patient_gender: str
-    appointment_date: datetime
-    home_collection: bool
-    address: Optional[str]
-    phone_number: str
-    special_instructions: Optional[str]
+class BookingStatusUpdate(BaseModel):
     status: BookingStatus
-    created_at: datetime
-    test: LabTestResponse
-    
-    class Config:
-        from_attributes = True
+
+class BookingAdminUpdate(BaseModel):
+    patient_name: Optional[str] = None
+    patient_email: Optional[EmailStr] = None
+    patient_phone: Optional[str] = None
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[time] = None
+    collection_type: Optional[CollectionType] = None
+    address: Optional[str] = None
+    special_instructions: Optional[str] = None
+    status: Optional[BookingStatus] = None
+    payment_status: Optional[PaymentStatus] = None
+    admin_notes: Optional[str] = None

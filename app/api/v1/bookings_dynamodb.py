@@ -4,7 +4,8 @@ Replaces SQLAlchemy-based bookings with DynamoDB
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 from datetime import datetime, timedelta
 from app.core.deps_dynamodb import get_current_active_user, get_admin_user
 from app.services.dynamodb_service import booking_service, lab_test_service
@@ -25,20 +26,20 @@ def create_booking(
     lab_test = lab_test_service.get_test_by_id(test_id)
     if not lab_test:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Lab test not found"
         )
     
     if not lab_test.get('is_active', False):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Lab test is not available"
         )
     
     # Check if home collection is requested but not available
     if booking_data.home_collection and not lab_test.get('is_home_collection_available', False):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Home collection is not available for this test"
         )
     
@@ -57,13 +58,13 @@ def create_booking(
     
     if appointment_dt <= now:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Appointment date must be in the future"
         )
     
     # Create booking
     booking_dict = {
-        'user_id': current_user['user_id'],
+        'user_id': current_user.get('id') or current_user.get('user_id'),
         'test_id': test_id,
         'patient_name': booking_data.patient_name,
         'patient_age': booking_data.patient_age,
@@ -133,13 +134,13 @@ def create_booking(
         return BookingResponse(**booking_response_data)
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create booking: {str(e)}"
         )
 
 @router.get("/my", response_model=List[BookingResponse])
 def get_my_bookings(
-    status: Optional[str] = Query(None, description="Filter by status"),
+    booking_status: Optional[str] = Query(None, description="Filter by status"),
     upcoming_only: bool = Query(False, description="Show only upcoming bookings"),
     current_user: dict = Depends(get_current_active_user)
 ):
@@ -147,14 +148,26 @@ def get_my_bookings(
     Get current user's bookings
     """
     try:
+        # Get current user ID - handle both 'id' and 'user_id' fields
+        user_id = current_user.get('id') or current_user.get('user_id')
+        if not user_id:
+            raise HTTPException(
+                status_code=http_status.HTTP_401_UNAUTHORIZED,
+                detail="User ID not found in authentication token"
+            )
+
         # Get bookings from today onwards if upcoming_only is True
         date_from = datetime.utcnow() if upcoming_only else None
-        bookings = booking_service.get_user_bookings(current_user['user_id'], date_from)
-        
+        bookings = booking_service.get_user_bookings(user_id, date_from)
+
+        # If no bookings found for this user, return empty list
+        if not bookings:
+            return []
+
         # Filter by status if provided
-        if status:
-            bookings = [b for b in bookings if b.get('status') == status]
-        
+        if booking_status:
+            bookings = [b for b in bookings if b.get('status') == booking_status]
+
         # Convert bookings to response format
         response_bookings = []
         for booking in bookings:
@@ -166,9 +179,14 @@ def get_my_bookings(
                 test_data['price'] = float(test_data.get('price', 0)) / 100
                 test_data['id'] = test_data.get('test_id')
             
-            # Convert booking format and map booking_id to id
+            # Convert booking format and ensure id field exists
             booking_copy = booking.copy()
-            booking_copy['id'] = booking_copy.get('booking_id')
+            # If booking_id exists, use it as id, otherwise keep existing id
+            if 'booking_id' in booking_copy:
+                booking_copy['id'] = booking_copy['booking_id']
+            elif 'id' not in booking_copy:
+                # If neither id nor booking_id exist, this is an error
+                raise ValueError("Booking record missing both 'id' and 'booking_id' fields")
             
             # Fix status enum case and empty datetime fields
             booking_copy['status'] = booking_copy.get('status', 'pending').lower()
@@ -200,7 +218,7 @@ def get_my_bookings(
                 **booking_copy,
                 'test': LabTestResponse(**test_data) if test_data else None,
                 'user': UserResponse(
-                id=current_user.get('user_id'),
+                id=user_id,
                 email=current_user.get('email', ''),
                 username=current_user.get('username', ''),
                 role=current_user.get('role', 'user').lower(),
@@ -216,7 +234,7 @@ def get_my_bookings(
         
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch bookings: {str(e)}"
         )
 
@@ -231,14 +249,15 @@ def get_booking(
     booking = booking_service.get_booking_by_id(booking_id)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
     # Check if user owns this booking or is admin
-    if booking['user_id'] != current_user['user_id'] and current_user.get('role') != 'ADMIN':
+    current_user_id = current_user.get('id') or current_user.get('user_id')
+    if booking['user_id'] != current_user_id and current_user.get('role') != 'ADMIN':
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this booking"
         )
     
@@ -255,14 +274,15 @@ def get_booking_by_reference(
     booking = booking_service.get_booking_by_reference(reference)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
     # Check if user owns this booking or is admin
-    if booking['user_id'] != current_user['user_id'] and current_user.get('role') != 'ADMIN':
+    current_user_id = current_user.get('id') or current_user.get('user_id')
+    if booking['user_id'] != current_user_id and current_user.get('role') != 'ADMIN':
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this booking"
         )
     
@@ -281,21 +301,22 @@ def update_booking(
     booking = booking_service.get_booking_by_id(booking_id)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
     # Check if user owns this booking or is admin
-    if booking['user_id'] != current_user['user_id'] and current_user.get('role') != 'ADMIN':
+    current_user_id = current_user.get('id') or current_user.get('user_id')
+    if booking['user_id'] != current_user_id and current_user.get('role') != 'ADMIN':
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this booking"
         )
     
     # Check if booking can be modified
     if booking.get('status') not in ['pending']:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Booking cannot be modified in current status"
         )
     
@@ -316,7 +337,7 @@ def update_booking(
         
         if appointment_dt <= now:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Appointment date must be in the future"
             )
         updates['appointment_date'] = booking_update.appointment_date.isoformat() + 'Z'
@@ -332,7 +353,7 @@ def update_booking(
         success = booking_service.update_booking(booking_id, updates)
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update booking"
             )
     
@@ -353,21 +374,22 @@ def cancel_booking(
     booking = booking_service.get_booking_by_id(booking_id)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
     # Check if user owns this booking or is admin
-    if booking['user_id'] != current_user['user_id'] and current_user.get('role') != 'ADMIN':
+    current_user_id = current_user.get('id') or current_user.get('user_id')
+    if booking['user_id'] != current_user_id and current_user.get('role') != 'ADMIN':
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Not authorized to cancel this booking"
         )
     
     # Check if booking can be cancelled
     if booking.get('status') not in ['pending', 'confirmed']:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Booking cannot be cancelled in current status"
         )
     
@@ -381,7 +403,7 @@ def cancel_booking(
     success = booking_service.update_booking(booking_id, updates)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to cancel booking"
         )
     
@@ -390,7 +412,7 @@ def cancel_booking(
 # Admin endpoints
 @router.get("/admin/all", response_model=List[BookingResponse])
 def get_all_bookings(
-    status: Optional[str] = Query(None, description="Filter by status"),
+    booking_status: Optional[str] = Query(None, description="Filter by status"),
     date_from: Optional[datetime] = Query(None, description="Filter from date"),
     current_user: dict = Depends(get_admin_user)
 ):
@@ -408,8 +430,8 @@ def get_all_bookings(
         bookings = response.get('Items', [])
         
         # Apply filters
-        if status:
-            bookings = [b for b in bookings if b.get('status') == status]
+        if booking_status:
+            bookings = [b for b in bookings if b.get('status') == booking_status]
         
         if date_from:
             date_str = date_from.isoformat() + 'Z'
@@ -422,7 +444,7 @@ def get_all_bookings(
         
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch bookings: {str(e)}"
         )
 
@@ -439,7 +461,7 @@ def update_booking_status(
     booking = booking_service.get_booking_by_id(booking_id)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
@@ -457,7 +479,7 @@ def update_booking_status(
     success = booking_service.update_booking(booking_id, updates)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update booking status"
         )
     
@@ -478,7 +500,7 @@ def admin_update_booking(
     booking = booking_service.get_booking_by_id(booking_id)
     if not booking:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=http_status.HTTP_404_NOT_FOUND,
             detail="Booking not found"
         )
     
@@ -502,7 +524,7 @@ def admin_update_booking(
         success = booking_service.update_booking(booking_id, updates)
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update booking"
             )
     
@@ -570,6 +592,6 @@ def get_booking_statistics(
         
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch booking statistics: {str(e)}"
         )

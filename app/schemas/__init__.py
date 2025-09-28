@@ -1,17 +1,15 @@
+# Authentication schemas
 from .auth import (
+    UserCreate,
     UserRegister,
+    UserUpdate,
+    UserResponse,
     UserLogin,
     TokenResponse,
-    TokenRefresh,
-    UserResponse,
-    AuthResponse,
-    PasswordReset,
-    PasswordResetConfirm,
-    ChangePassword,
-    EmailVerification,
-    AuthError
+    ChangePassword
 )
 
+# Report schemas
 from .report import (
     ReportCreate,
     ReportUpdate,
@@ -27,6 +25,7 @@ from .report import (
     Priority
 )
 
+# Company schemas
 from .company import (
     CompanyInfoResponse,
     CompanyInfoUpdate,
@@ -43,5 +42,59 @@ from .company import (
     InquiryType,
     MessageStatus,
     BusinessHours,
-    CompanySettings
+    CompanySettings,
+    Priority
+)
+
+# Lab test schemas
+from .lab_test import (
+    LabTestCreate,
+    LabTestUpdate,
+    LabTestResponse,
+    TestPanelCreate,
+    TestPanelResponse,
+    LabTestListResponse,
+    TestPanelListResponse,
+    LabTestFilter,
+    TestStats,
+    PriceRange,
+    TestCategory,
+    TestStatus
+)
+
+# Booking schemas
+from .booking import (
+    BookingCreate,
+    BookingUpdate,
+    BookingResponse,
+    BookingListResponse,
+    BookingFilter,
+    AvailableSlot,
+    SlotAvailability,
+    BookingStats,
+    PaymentDetails,
+    BookingConfirmation,
+    BookingStatus,
+    CollectionType,
+    TimeSlot,
+    BookingStatusUpdate,
+    BookingAdminUpdate
+)
+
+# Report explanation schemas
+from .report_explanation import (
+    ReportExplanationResponse,
+    ReportExplanationRequest,
+    ReportExplanationSummary,
+    ProcessingStatus,
+    AbnormalityStatus,
+    AbnormalitySeverity,
+    MedicalValue,
+    AbnormalFinding,
+    ReportSummaries,
+    AnalysisMetadata,
+    ReportAnalysisResult,
+    AbnormalValuesFilter,
+    BatchExplanationRequest,
+    BatchExplanationResponse
 )
